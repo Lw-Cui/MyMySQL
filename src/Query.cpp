@@ -6,8 +6,9 @@ using namespace mysqlpp;
 
 int QuerySQL(Connection &conn, const string& Query_str) {
     try {
-        Query query = conn.query(Query_str);
-        if (StoreQueryResult res = query.store()) {
+        Query query{conn.query(Query_str)}; 
+        StoreQueryResult res{query.store()};
+        if (res) {
             cout << "We have:" << endl;
             for (auto it = res.begin(); it != res.end(); ++it) {
                 Row row = *it;
