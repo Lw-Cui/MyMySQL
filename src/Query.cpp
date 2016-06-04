@@ -1,35 +1,39 @@
 #include <iostream>
 #include <string>
+
+#include "boost/format.hpp"
 #include <mysql++.h>
+
 using namespace std;
 using namespace mysqlpp;
 
-int QuerySQL(Connection &conn, const string& Query_str) {
-    try {
-        Query query{conn.query(Query_str)}; 
-        StoreQueryResult res{query.store()};
-        if (res) {
-            cout << "We have:" << endl;
-            for (auto it = res.begin(); it != res.end(); ++it) {
-                Row row = *it;
-                cout << '\t' << row[0] << '\t' << row[1] << endl;
-	        }
-	    }
+namespace {
+    const char *QUERY_COLUMNS = "select COLUMN_NAME from information_schema.COLUMNS\
+        where table_name = '%s';";
+    const char *QUERY_DB = "SELECT TABLE_NAME \
+        FROM INFORMATION_SCHEMA.TABLES\
+        WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA='%s';";
+}
 
-    } catch (BadQuery er) { // handle any connection or
-        // query errors that may come up
-        cerr << "Error: " << er.what() << endl;
-        return -1;
-    } catch (const BadConversion& er) {
-        // Handle bad conversions
-        cerr << "Conversion error: " << er.what() << endl <<
-                "\tretrieved data size: " << er.retrieved <<
-                ", actual size: " << er.actual_size << endl;
-        return -1;
-    } catch (const Exception& er) {
-        // Catch-all for any other MySQL++ exceptions
-        cerr << "Error: " << er.what() << endl;
-        return -1;
+std::vector<std::string> QuerySQL(Connection &conn, const string &Query_str) {
+    std::vector<std::string> v;
+    Query query{conn.query(Query_str)}; 
+    StoreQueryResult res{query.store()};
+    if (res) for (auto &r: res) {
+        string tmp;r[0].to_string(tmp);
+        v.push_back(std::move(tmp));
     }
-    return 0;
+    return std::move(v);
+}
+
+std::vector<std::string> QueryColumn
+    (mysqlpp::Connection &conn, const string &tablename) {
+    string queryStr = str(boost::format(QUERY_COLUMNS) % tablename);
+    return std::move(QuerySQL(conn, queryStr));
+}
+
+std::vector<std::string> QueryTable
+    (mysqlpp::Connection &conn, const string &dbname) {
+    string queryStr = str(boost::format(QUERY_DB) % dbname);
+    return std::move(QuerySQL(conn, queryStr));
 }

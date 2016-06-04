@@ -6,6 +6,8 @@
 #include <string>
 #include <mysql++.h>
 std::vector<std::string> QuerySQL(mysqlpp::Connection &conn, const std::string &Query_str);
+std::vector<std::string> QueryColumn (mysqlpp::Connection &conn, const std::string &name);
+std::vector<std::string> QueryTable (mysqlpp::Connection &conn, const std::string &dbname);
 std::vector<std::string> Argument(const std::string &origin);
 std::vector<std::string> Dbname(const std::string &origin);
 std::vector<std::string> Condition(const std::string &origin);
