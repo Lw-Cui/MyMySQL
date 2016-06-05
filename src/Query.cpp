@@ -15,24 +15,24 @@ namespace {
         WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA='%s';";
 }
 
-std::vector<std::string> QuerySQL(Connection &conn, const string &Query_str) {
-    std::vector<std::string> v;
+std::set<std::string> QuerySQL(Connection &conn, const string &Query_str) {
+    std::set<std::string> v;
     Query query{conn.query(Query_str)}; 
     StoreQueryResult res{query.store()};
     if (res) for (auto &r: res) {
         string tmp;r[0].to_string(tmp);
-        v.push_back(std::move(tmp));
+        v.insert(std::move(tmp));
     }
     return std::move(v);
 }
 
-std::vector<std::string> QueryColumn
+std::set<std::string> QueryColumn
     (mysqlpp::Connection &conn, const string &tablename) {
     string queryStr = str(boost::format(QUERY_COLUMNS) % tablename);
     return std::move(QuerySQL(conn, queryStr));
 }
 
-std::vector<std::string> QueryTable
+std::set<std::string> QueryTable
     (mysqlpp::Connection &conn, const string &dbname) {
     string queryStr = str(boost::format(QUERY_DB) % dbname);
     return std::move(QuerySQL(conn, queryStr));

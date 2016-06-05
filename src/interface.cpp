@@ -1,6 +1,7 @@
 #include <iostream>
 #include <regex>
 #include <map>
+#include <set>
 #include <vector>
 #include <string>
 
@@ -27,10 +28,17 @@ int main(int argc, const char *argv[]) {
 
     Connection conn(false);
     conn.connect(database.c_str(), url.c_str(), user.c_str(), password.c_str());
-
-    //auto v = Regex(MYQUERY, "\\(.*\\)");
-    //for (auto &ite: v) cout << ite << endl;
-	//string query_str; getline(cin, query_str);
-    //QuerySQL(conn, query_str);
+    std::map<std::string, std::string> index;
+    std::map<std::string, std::set<std::string>> dbcolumn;
+    auto tables = QueryTable(conn, database);
+    for (auto &tablename: tables) {
+    	auto columns = QueryColumn(conn, tablename);
+    	for (auto &colname: columns) index[colname] = tablename;
+    	dbcolumn[tablename] = std::move(columns);
+    }
+    cout << "Select" + BuildSelect(Argument(MYQUERY), index) 
+        + " From" + BuildFrom(Dbname(MYQUERY))
+        + " Where" + BuildDBconn(Dbname(MYQUERY), dbcolumn)
+        + " and" + BuildWhere(Condition(MYQUERY), index) << endl;
     return 0;
 }
