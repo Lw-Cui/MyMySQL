@@ -7,8 +7,12 @@ using namespace std;
 using namespace mysqlpp;
 
 namespace {
+	const char *argument = "\\(.*\\)";
+	const char *dbname = "@[\\w]*";
+	const char *condition =  "\\[.*\\]";
+	const char *singleWord = "\\w+";
 	std::vector<string> Regex(const string &origin, const string &pattern,
-		const string &unit = "\\w+") {
+		const string &unit = singleWord) {
 		regex range{pattern}, word{unit};
 		std::vector<string> res;
 
@@ -22,9 +26,6 @@ namespace {
 		});
 		return std::move(res);
 	}
-	const char *argument = "\\(.*\\)";
-	const char *dbname = "@[\\w]*";
-	const char *condition =  "\\[.*\\]";
 }
 
 /*
@@ -51,8 +52,10 @@ std::vector<std::string> Dbname(const std::string &origin) {
 }
 
 std::vector<std::string> Condition(const std::string &origin) {
-	std::vector<std::string> v{Regex(origin, condition, condition)};
-	for(auto &str: v) str = str.substr(1, str.length() - 2);
+	std::vector<std::string> v{Regex(origin, condition, "\\S+")};
+	for (auto &s:v)
+		if (s.front() == '[') s = s.substr(1, s.size() - 1);
+		else if (s.back() == ']') s.pop_back();
 	return std::move(v);
 }
 
