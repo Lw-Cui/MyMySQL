@@ -8,7 +8,8 @@
 #include <map>
 #include <mysql++.h>
 #include "boost/format.hpp"
-std::set<std::string> QuerySQL(mysqlpp::Connection &conn, const std::string &Query_str);
+std::set<std::string> QuerySQL(mysqlpp::Connection &conn, 
+	const std::string &Query_str, int width);
 std::set<std::string> QueryColumn (mysqlpp::Connection &conn, const std::string &name);
 std::set<std::string> QueryTable (mysqlpp::Connection &conn, const std::string &dbname);
 std::vector<std::string> Argument(const std::string &origin);

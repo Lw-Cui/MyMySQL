@@ -17,7 +17,7 @@ namespace {
 	const char *PASSWORD = "greatclw";
 	const char *DATABASE = "OrderDB";
 	const char *MYQUERY = "(productNo, productName) @Product @OrderDetail [quantity > 3]";
-	const char *QUERY = "select Product.productNo, Product.productName from Product, OrderDetail where Product.productNo = OrderDetail.productNo and OrderDetail.quantity > 3;";
+	//const char *QUERY = "select Product.productNo, Product.productName from Product, OrderDetail where Product.productNo = OrderDetail.productNo and OrderDetail.quantity > 3;";
 }
  
 int main(int argc, const char *argv[]) {
@@ -36,9 +36,17 @@ int main(int argc, const char *argv[]) {
     	for (auto &colname: columns) index[colname] = tablename;
     	dbcolumn[tablename] = std::move(columns);
     }
-    cout << "Select" + BuildSelect(Argument(MYQUERY), index) 
+    cout << "ORIGIN:" << endl << MYQUERY << endl;
+
+    std::string SQL = 
+        "Select" + BuildSelect(Argument(MYQUERY), index) 
         + " From" + BuildFrom(Dbname(MYQUERY))
         + " Where" + BuildDBconn(Dbname(MYQUERY), dbcolumn)
-        + " and" + BuildWhere(Condition(MYQUERY), index) << endl;
+        + " and" + BuildWhere(Condition(MYQUERY), index)
+        + ";";
+    cout << "SQL:" << endl << SQL << endl;
+    
+    auto res = QuerySQL(conn, SQL, 15);
+    cout << "RESULT:" << endl; for (auto &s: res) cout << s << endl;
     return 0;
 }

@@ -29,7 +29,7 @@ const std::string BuildWhere(const std::vector<std::string> &con,
     const std::map<std::string, std::string> &index) {
 	string where;
 	for (int i = 0; i < con.size(); i++) {
-		if (i) where += " and"; 
+		//if (i) where += " "; 
 		if (index.count(con[i]))
 			where += " " + str(boost::format(" %s.%s") % index.at(con[i]) % con[i]);
 		else where += " " + con[i];
