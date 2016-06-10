@@ -1,0 +1,4 @@
+SET(PARSER Parser)
+ADD_EXECUTABLE(${PARSER}
+	parser.cpp
+)
