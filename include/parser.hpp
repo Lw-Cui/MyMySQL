@@ -17,6 +17,13 @@ public:
 	inline double GetNumVal() {return numVal;}
 	inline std::string GetNameStr() {return nameStr;}
 	inline Token GetTok() {return currentTok;}
+	inline int GetTokPrecedence() {
+		if (currentTok == TokIdentifier) {
+			if (GetNameStr() == "&") return 2;
+			else if (GetNameStr() == "|") return 1;
+		}
+		return -1;
+	}
 	Token GetNextTok() {
 		int beg{expression.get()}; 
 		if (beg == EOF) {
@@ -79,7 +86,8 @@ public:
 		std::shared_ptr<ExprAST> left, std::shared_ptr<ExprAST> right)
 	:Op{op}, LHS{std::move(left)}, RHS{std::move(right)} {}
 	virtual void print(std::ostream &out) override {
-		LHS->print(out); out << " " << Op; RHS->print(out);}
+		std::cout << "("; LHS->print(out);
+		out << " " << Op << " "; RHS->print(out); std::cout << ")";}
 private:
 	std::string Op;
 	std::shared_ptr<ExprAST> LHS, RHS;
@@ -89,7 +97,8 @@ class ExpressionAST: public ExprAST {
 public:
 	ExpressionAST(std::vector<std::shared_ptr<ExprAST>> v):ptr{std::move(v)}{}
 	virtual void print(std::ostream &out) override {
-		for (auto &p: ptr) p->print(out);}
+		std::cout << "( "; for (auto &p: ptr)  p->print(out);
+		std::cout << ")"; }
 private:
 	std::vector<std::shared_ptr<ExprAST>> ptr;
 };
