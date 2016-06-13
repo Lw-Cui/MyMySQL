@@ -40,9 +40,14 @@ public:
 			return GetNextTok();
 		} else {
 			expression.putback(beg); nameStr.clear(); 
-			while ((beg = expression.get()) && !isalnum(beg) && !isspace(beg) && beg != EOF)
+			while ((beg = expression.get()) && !isalnum(beg) && !isspace(beg) && beg != EOF) {
 				nameStr.push_back(beg);
+				if (nameStr == "(" || nameStr == ")" || nameStr == "@" 
+					|| nameStr == "[" || nameStr == "]") goto next;
+			}
+
 			expression.putback(beg); 
+		next:
 			if (nameStr == "(") currentTok = TokArgs;
 			else if (nameStr == "@") currentTok = TokDb;
 			else if (nameStr == "[") currentTok = TokCond;
@@ -86,7 +91,7 @@ public:
 		std::shared_ptr<ExprAST> left, std::shared_ptr<ExprAST> right)
 	:Op{op}, LHS{std::move(left)}, RHS{std::move(right)} {}
 	virtual void print(std::ostream &out) override {
-		std::cout << "("; LHS->print(out);
+		std::cout << "\n\t("; LHS->print(out);
 		out << " " << Op << " "; RHS->print(out); std::cout << ")";}
 private:
 	std::string Op;

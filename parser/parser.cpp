@@ -7,8 +7,9 @@
 using namespace std;
 namespace {
 	//const char *MYQUERY = "(productNo, productName) @Product @OrderDetail [quantity == 6] | [quantity > 3] & [quantity < 5]";
-	//const char *MYQUERY = "(productNo, productName) @Product @OrderDetail [ (a) @b [c] ] | [quantity > 3] & [quantity < 5]";
-	const char *MYQUERY = "(a) @b [ (x) @y [z] | [w] ] | [d] & [e]";
+	const char *MYQUERY = "(productNo, productName) @Product @OrderDetail \
+		[(productNo) @Product [name = x] & [kind = Y]]\
+		| [quantity > 3] & [quantity < 5]";
 }
 
 inline std::shared_ptr<ExprAST> LogError(const std::string& error) {
