@@ -45,7 +45,7 @@ public:
 			expression.putback(beg); 
 			if (nameStr == "(") currentTok = TokArgs;
 			else if (nameStr == "@") currentTok = TokDb;
-			else if (nameStr == "]") currentTok = TokCond;
+			else if (nameStr == "[") currentTok = TokCond;
 			else currentTok = TokIdentifier;
 		}
 		return currentTok;
@@ -67,7 +67,7 @@ public:
 class NumberExprAST: public ExprAST {
 public:
 	NumberExprAST(double v):Val{v} {}
-	virtual void print(std::ostream &out) override {out << Val << " ";}
+	virtual void print(std::ostream &out) override { out << Val << " ";}
 private:
 	double Val;
 };
@@ -97,23 +97,7 @@ class ExpressionAST: public ExprAST {
 public:
 	ExpressionAST(std::vector<std::shared_ptr<ExprAST>> v):ptr{std::move(v)}{}
 	virtual void print(std::ostream &out) override {
-		std::cout << "( "; for (auto &p: ptr)  p->print(out);
-		std::cout << ")"; }
+		std::cout << "["; for (auto &p: ptr)  p->print(out); std::cout << "]"; }
 private:
 	std::vector<std::shared_ptr<ExprAST>> ptr;
 };
-
-/*
-class QueryExprAST: public ExprAST {
-public:
-	QueryExprAST(
-		std::shared_ptr<ColumnExprAST> col,
-		std::shared_ptr<DataBaseExprAST>d, 
-		std::shared_ptr<ConditionExprAST> con)
-	:Col{col}, Db{d}, Con{con}{}
-private:
-	std::shared_ptr<ColumnExprAST> Col;
-	std::shared_ptr<DataBaseExprAST> Db;
-	std::shared_ptr<ConditionExprAST> Con;
-};
-*/

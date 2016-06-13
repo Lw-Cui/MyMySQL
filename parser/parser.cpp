@@ -6,8 +6,9 @@
 #include <parser.hpp>
 using namespace std;
 namespace {
-	const char *MYQUERY = "(productNo, productName) @Product @OrderDetail\
-		 [quantity == 6] | [quantity < 5] & [quantity > 3]";
+	//const char *MYQUERY = "(productNo, productName) @Product @OrderDetail [quantity == 6] | [quantity > 3] & [quantity < 5]";
+	//const char *MYQUERY = "(productNo, productName) @Product @OrderDetail [ (a) @b [c] ] | [quantity > 3] & [quantity < 5]";
+	const char *MYQUERY = "(a) @b [ (x) @y [z] | [w] ] | [d] & [e]";
 }
 
 inline std::shared_ptr<ExprAST> LogError(const std::string& error) {
@@ -55,7 +56,6 @@ inline std::shared_ptr<ExprAST> ParseColumnExpr(Lexer &lex) {
 
 inline std::shared_ptr<ExprAST> ParseSimpleCondExpr(Lexer &lex) {
 	std::vector<std::shared_ptr<ExprAST>> v;
-	lex.GetNextTok();
 	while (lex.GetNameStr() != "]")
 		switch (lex.GetTok()) {
 		case Lexer::Token::TokName:
@@ -70,9 +70,26 @@ inline std::shared_ptr<ExprAST> ParseSimpleCondExpr(Lexer &lex) {
 	return std::make_shared<ExpressionAST>(v);
 }
 
+std::shared_ptr<ExprAST> ParseConditionExpr(Lexer &lex);
+
+inline std::shared_ptr<ExprAST> ParseSQL(Lexer &lex) {
+	std::vector<std::shared_ptr<ExprAST>> v;
+	while (true)
+		switch (lex.GetTok()) {
+		case Lexer::Token::TokDb:
+			v.push_back(ParseDatabaseExpr(lex)); break;
+		case Lexer::Token::TokCond:
+			v.push_back(ParseConditionExpr(lex)); break;
+		case Lexer::Token::TokArgs:
+			v.push_back(ParseColumnExpr(lex)); break;
+		default:
+			lex.GetNextTok(); return make_shared<ExpressionAST>(v);
+		}
+}
+
 inline std::shared_ptr<ExprAST> ParseSingleCondExpr(Lexer &lex) {
 	std::shared_ptr<ExprAST> ptr;
-	switch (lex.GetTok()) {
+	switch (lex.GetNextTok()) {
 	case Lexer::Token::TokNumber:
 	case Lexer::Token::TokIdentifier:
 	case Lexer::Token::TokName:
@@ -80,7 +97,7 @@ inline std::shared_ptr<ExprAST> ParseSingleCondExpr(Lexer &lex) {
 	case Lexer::Token::TokEOF:
 		ptr = nullptr; break;
 	default:
-		;//ptr = ParseSQL(lex); lex.GetNextTok(); break;
+		ptr = ParseSQL(lex); break;
 	}
 	return std::move(ptr);
 }
@@ -92,7 +109,7 @@ inline std::shared_ptr<ExprAST> ParseBinOpRHS
 		auto tokPrec = lex.GetTokPrecedence();
 		op = lex.GetNameStr();
 		if (tokPrec < ExprPrec) return LHS; // parse stop.
-		//if (lex.GetNextTok() == Lexer::Token::TokEOF) return nullptr; syntax error.
+		if (lex.GetNextTok() == Lexer::Token::TokEOF) return nullptr; //syntax error.
 		RHS = ParseSingleCondExpr(lex);
 		auto nextPrec = lex.GetTokPrecedence();
 		if (nextPrec > tokPrec)
@@ -105,21 +122,10 @@ inline std::shared_ptr<ExprAST> ParseConditionExpr(Lexer &lex) {
 	return ParseBinOpRHS(lex, 0, ParseSingleCondExpr(lex));
 }
 
-inline std::shared_ptr<ExprAST> ParseSQL(Lexer &lex) {
-	switch (lex.GetTok()) {
-	case Lexer::Token::TokDb:
-		return ParseDatabaseExpr(lex);
-	case Lexer::Token::TokCond:
-		return ParseColumnExpr(lex);
-	case Lexer::Token::TokArgs:
-		return ParseConditionExpr(lex);
-	default:
-		return LogError("unknown token when expecting an expression");
-	}
-}
-
 int main() {
 	Lexer lex{MYQUERY};
+	cout << "Origin:" << endl << MYQUERY << endl;
+
 	/*
 	Lexer::Token tok;
 	cout << "Lexer:" << endl;
@@ -127,14 +133,11 @@ int main() {
 		if (tok == Lexer::Token::TokNumber) cout << lex.GetNumVal() << endl;
 		else cout << lex.GetNameStr() << endl;
 	*/
-	cout << "Column:" << endl;
-	auto ptr = ParseColumnExpr(lex);
+	 
+	cout << "\nParse:" << endl;
+	auto ptr = ParseSQL(lex);
 	ptr->print(cout);
-	cout << endl << "Database:" << endl;
-	ptr = ParseDatabaseExpr(lex);
-	ptr->print(cout);
-	cout << endl << "Condition:" << endl;
-	ptr = ParseConditionExpr(lex);
-	ptr->print(cout);
+	cout << endl;
+	
 	return 0;
 }
