@@ -1,0 +1,2 @@
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
+ADD_LIBRARY(${QUERY_FUNC} Query.cpp)
