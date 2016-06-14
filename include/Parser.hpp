@@ -14,10 +14,10 @@ public:
 	};
 
 	Lexer(const std::string &exp):expression{exp}, currentTok{TokEOF} {GetNextTok();}
-	inline double GetNumVal() {return numVal;}
-	inline std::string GetNameStr() {return nameStr;}
-	inline Token GetTok() {return currentTok;}
-	inline int GetTokPrecedence() {
+	double GetNumVal() {return numVal;}
+	std::string GetNameStr() {return nameStr;}
+	Token GetTok() {return currentTok;}
+	int GetTokPrecedence() {
 		if (currentTok == TokIdentifier) {
 			if (GetNameStr() == "&") return 2;
 			else if (GetNameStr() == "|") return 1;
@@ -29,29 +29,25 @@ public:
 		if (beg == EOF) {
 			currentTok = TokEOF;
 		} else if (isalpha(beg)) {
-			expression.putback(beg); nameStr.clear(); 
+			expression.unget(); nameStr.clear(); 
 			while ((beg = expression.get()) && isalnum(beg))
 				nameStr.push_back(beg);
-			expression.putback(beg); currentTok = TokName;
+			expression.unget(); currentTok = TokName;
 		} else if (isdigit(beg)) {
-			expression.putback(beg);
+			expression.unget();
 			expression >> numVal; currentTok = TokNumber;
 		} else if (isspace(beg)) {
 			return GetNextTok();
 		} else {
-			expression.putback(beg); nameStr.clear(); 
-			while ((beg = expression.get()) && !isalnum(beg) && !isspace(beg) && beg != EOF) {
-				nameStr.push_back(beg);
-				if (nameStr == "(" || nameStr == ")" || nameStr == "@" 
-					|| nameStr == "[" || nameStr == "]") goto next;
+			switch (beg) {
+			case '(':currentTok = TokArgs; break;
+			case '@':currentTok = TokDb; break;
+			case '[':currentTok = TokCond; break;
+			default: currentTok = TokIdentifier; break;
 			}
-
-			expression.putback(beg); 
-		next:
-			if (nameStr == "(") currentTok = TokArgs;
-			else if (nameStr == "@") currentTok = TokDb;
-			else if (nameStr == "[") currentTok = TokCond;
-			else currentTok = TokIdentifier;
+			nameStr.clear(); nameStr.push_back(beg);
+			if (expression.get() == '=') nameStr.push_back('=');
+			else expression.unget();
 		}
 		return currentTok;
 	}

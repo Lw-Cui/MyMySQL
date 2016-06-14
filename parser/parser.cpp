@@ -9,7 +9,7 @@ namespace {
 	//const char *MYQUERY = "(productNo, productName) @Product @OrderDetail [quantity == 6] | [quantity > 3] & [quantity < 5]";
 	const char *MYQUERY = "(productNo, productName) @Product @OrderDetail \
 		[(productNo) @Product [name = x] & [kind = Y]]\
-		| [quantity > 3] & [quantity < 5]";
+		| [quantity >= 3] & [quantity < 5]";
 
 	//const char *TEST = "(a,b) @c @e [(x) @y [z]]| [y]";
 }
@@ -135,7 +135,7 @@ int main() {
 	while ((tok = lex.GetNextTok()) != Lexer::Token::TokEOF)
 		if (tok == Lexer::Token::TokNumber) cout << lex.GetNumVal() << endl;
 		else cout << lex.GetNameStr() << endl;
-	*/
+		*/
 	 
 	cout << "\nParse:" << endl;
 	auto ptr = ParseSQL(lex);
