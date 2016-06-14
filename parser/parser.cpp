@@ -3,13 +3,15 @@
 #include <memory>
 #include <iostream>
 #include <sstream>
-#include <parser.hpp>
+#include <Parser.hpp>
 using namespace std;
 namespace {
 	//const char *MYQUERY = "(productNo, productName) @Product @OrderDetail [quantity == 6] | [quantity > 3] & [quantity < 5]";
 	const char *MYQUERY = "(productNo, productName) @Product @OrderDetail \
 		[(productNo) @Product [name = x] & [kind = Y]]\
 		| [quantity > 3] & [quantity < 5]";
+
+	//const char *TEST = "(a,b) @c @e [(x) @y [z]]| [y]";
 }
 
 inline std::shared_ptr<ExprAST> LogError(const std::string& error) {
