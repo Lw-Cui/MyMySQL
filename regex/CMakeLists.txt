@@ -5,4 +5,4 @@ ADD_EXECUTABLE(${QueryMySQL}
 	parse.cpp
 	build.cpp
 )
-TARGET_LINK_LIBRARIES(${QueryMySQL} ${QUERY_FUNC} mysqlpp mysqlclient)
+TARGET_LINK_LIBRARIES(${QueryMySQL} ${QUERY_FUNC})
