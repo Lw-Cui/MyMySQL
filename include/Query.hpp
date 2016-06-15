@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <mysql++.h>
 std::set<std::string> QuerySQL(mysqlpp::Connection &conn, 
 	const std::string &Query_str, int width);
 std::set<std::string> QueryColumn (mysqlpp::Connection &conn, const std::string &name);
