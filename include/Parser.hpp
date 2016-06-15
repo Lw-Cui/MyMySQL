@@ -13,7 +13,7 @@ public:
 		TokDb = -7,
 	};
 
-	Lexer(const std::string &exp):expression{exp}, currentTok{TokEOF} {GetNextTok();}
+	Lexer(const std::string &exp):expression{exp} {GetNextTok();}
 	double GetNumVal() {return numVal;}
 	std::string GetNameStr() {return nameStr;}
 	Token GetTok() {return currentTok;}
@@ -65,10 +65,14 @@ public:
 	virtual void print(std::ostream &out) = 0;
 };
 
+inline std::ostream& operator<<(std::ostream &out, ExprAST &exp) {
+	exp.print(out); return out;
+}
+
 class NumberExprAST: public ExprAST {
 public:
 	NumberExprAST(double v):Val{v} {}
-	virtual void print(std::ostream &out) override { out << Val << " ";}
+	virtual void print(std::ostream &out) override { out << Val;}
 private:
 	double Val;
 };
@@ -76,7 +80,7 @@ private:
 class NameExprAST: public ExprAST {
 public:
 	NameExprAST(const std::string &n):Vname{n}{}
-	virtual void print(std::ostream &out) override {out << Vname << " ";}
+	virtual void print(std::ostream &out) override {out << Vname;}
 private:
 	std::string Vname;
 };
@@ -87,18 +91,67 @@ public:
 		std::shared_ptr<ExprAST> left, std::shared_ptr<ExprAST> right)
 	:Op{op}, LHS{std::move(left)}, RHS{std::move(right)} {}
 	virtual void print(std::ostream &out) override {
-		std::cout << "\n\t("; LHS->print(out);
-		out << " " << Op << " "; RHS->print(out); std::cout << ")";}
+		if (Op == "&") out << "(" << *LHS << " and " << *RHS << ")";
+		else if (Op == "|") out << "(" << *LHS << " or " << *RHS << ")";
+	}
 private:
 	std::string Op;
 	std::shared_ptr<ExprAST> LHS, RHS;
 };
 
-class ExpressionAST: public ExprAST {
+class GroupExprAST: public ExprAST {
 public:
-	ExpressionAST(std::vector<std::shared_ptr<ExprAST>> v):ptr{std::move(v)}{}
+	GroupExprAST(std::vector<std::shared_ptr<ExprAST>> v):ptr{std::move(v)}{}
 	virtual void print(std::ostream &out) override {
-		std::cout << "["; for (auto &p: ptr)  p->print(out); std::cout << "]"; }
-private:
+		for (auto &p: ptr)  out << *p;}
+protected:
 	std::vector<std::shared_ptr<ExprAST>> ptr;
 };
+
+class ConditionAST: public ExprAST {
+public:
+	ConditionAST(std::shared_ptr<ExprAST> v):ptr{std::move(v)}{}
+	virtual void print(std::ostream &out) override {
+		out << " WHERE " << *ptr << "\n";
+	}
+private:
+	std::shared_ptr<ExprAST> ptr;
+};
+
+class ExistsAST: public GroupExprAST {
+public:
+	ExistsAST(std::vector<std::shared_ptr<ExprAST>> v):GroupExprAST{std::move(v)}{}
+	virtual void print(std::ostream &out) override {
+		out << "EXISTS ("; GroupExprAST::print(out); out << " )";}
+};
+
+class DataBaseAST: public GroupExprAST {
+public:
+	DataBaseAST(std::vector<std::shared_ptr<ExprAST>> v):GroupExprAST{std::move(v)}{}
+	virtual void print(std::ostream &out) override {
+		out << " FROM ";
+		for (size_t i = 0; i < ptr.size(); i++)
+			if (i) out << ", " << *ptr[i]; else out << *ptr[i];
+		out << "\n";
+	}
+};
+
+class ColumnAST: public GroupExprAST {
+public:
+	ColumnAST(std::vector<std::shared_ptr<ExprAST>> v):GroupExprAST{std::move(v)}{}
+	virtual void print(std::ostream &out) override {
+		out << " SELECT ";
+		for (size_t i = 0; i < ptr.size(); i++)
+			if (i) out << ", " << *ptr[i]; else out << *ptr[i];
+		out << "\n";
+	}
+};
+
+class SimpleConditionAST: public GroupExprAST {
+public:
+	SimpleConditionAST(std::vector<std::shared_ptr<ExprAST>> v):GroupExprAST{std::move(v)}{}
+	virtual void print(std::ostream &out) override {
+		for(auto &p: ptr) out << " " << *p << "";
+	}
+};
+
