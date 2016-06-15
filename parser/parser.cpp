@@ -1,17 +1,27 @@
 #include <string>
 #include <vector>
+#include <map>
 #include <memory>
 #include <iostream>
 #include <sstream>
 #include <Parser.hpp>
+#include <mysql++.h>
 using namespace std;
-namespace {
-	//const char *MYQUERY = "(productNo, productName) @Product @OrderDetail [quantity == 6] | [quantity > 3] & [quantity < 5]";
-	const char *MYQUERY = "(productNo, productName) @Product @OrderDetail \n\
-		[(productNo) @Product [name == 'x'] & [kind == 'Y']]\n\
-		| [quantity >= 3] & [quantity < 5]";
+using namespace mysqlpp;
 
-	//const char *TEST = "(a,b) @c @e [(x) @y [z]]| [y]";
+namespace {
+	const char *MYQUERY = "(productNo, productName) @Product @OrderDetail \n\
+		[(productNo) @Product [productPrice >= 10] & [productName != 'DRAM']]\n\
+		| [quantity >= 3] & [quantity < 5]";
+	
+	const char *DBHOST = "localhost";
+	const char *USER = "root";
+	const char *PASSWORD = "greatclw";
+	const char *DATABASE = "OrderDB";
+	struct DbInfo {
+	    std::map<std::string, std::string> getDBname;
+	    std::map<std::string, std::set<std::string>> dbcolumn;
+	};
 }
 
 inline std::shared_ptr<ExprAST> LogError(const std::string& error) {
@@ -19,8 +29,12 @@ inline std::shared_ptr<ExprAST> LogError(const std::string& error) {
 	return nullptr;
 }
 
-inline std::shared_ptr<ExprAST> ParseNameExpr(Lexer &lex) {
-	auto v = std::make_shared<NameExprAST>(lex.GetNameStr());
+inline std::shared_ptr<ExprAST> ParseNameExpr(Lexer &lex, DbInfo &info) {
+	std::shared_ptr<NameExprAST> v; auto str = lex.GetNameStr();
+	if (info.getDBname.count(str))
+		v = std::make_shared<NameExprAST>(info.getDBname[str] + "." + str);
+	else
+		v = std::make_shared<NameExprAST>(lex.GetNameStr());
 	lex.GetNextTok();
 	return std::move(v);
 }
@@ -37,32 +51,32 @@ inline std::shared_ptr<ExprAST> ParseIdentifierExpr(Lexer &lex) {
 	return std::move(v);
 }
 
-inline std::shared_ptr<ExprAST> ParseDatabaseExpr(Lexer &lex) {
+inline std::shared_ptr<ExprAST> ParseDatabaseExpr(Lexer &lex, DbInfo &info) {
 	std::vector<std::shared_ptr<ExprAST>> v;
 	while (lex.GetTok() == Lexer::Token::TokDb) {
-		lex.GetNextTok(); v.push_back(ParseNameExpr(lex));
+		lex.GetNextTok(); v.push_back(ParseNameExpr(lex, info));
 	}
 	return std::make_shared<DataBaseAST>(v);
 }
 
-inline std::shared_ptr<ExprAST> ParseColumnExpr(Lexer &lex) {
+inline std::shared_ptr<ExprAST> ParseColumnExpr(Lexer &lex, DbInfo &info) {
 	std::vector<std::shared_ptr<ExprAST>> v;
 	lex.GetNextTok(); 
 	while ((lex.GetTok() == Lexer::Token::TokIdentifier && lex.GetNameStr() != ")")
 		|| lex.GetTok() == Lexer::Token::TokName)
 		if (lex.GetTok() == Lexer::Token::TokName)
-			v.push_back(ParseNameExpr(lex));
+			v.push_back(ParseNameExpr(lex, info));
 		else
 			lex.GetNextTok();
 	lex.GetNextTok(); return std::make_shared<ColumnAST>(v);
 }
 
-inline std::shared_ptr<ExprAST> ParseSimpleCondExpr(Lexer &lex) {
+inline std::shared_ptr<ExprAST> ParseSimpleCondExpr(Lexer &lex, DbInfo &info) {
 	std::vector<std::shared_ptr<ExprAST>> v;
 	while (lex.GetNameStr() != "]")
 		switch (lex.GetTok()) {
 		case Lexer::Token::TokName:
-			v.push_back(ParseNameExpr(lex)); break;
+			v.push_back(ParseNameExpr(lex, info)); break;
 		case Lexer::Token::TokNumber:
 			v.push_back(ParseNumberExpr(lex)); break;
 		case Lexer::Token::TokIdentifier:
@@ -73,18 +87,19 @@ inline std::shared_ptr<ExprAST> ParseSimpleCondExpr(Lexer &lex) {
 	return std::make_shared<SimpleConditionAST>(v);
 }
 
-std::shared_ptr<ExprAST> ParseConditionExpr(Lexer &lex);
+std::shared_ptr<ExprAST> ParseConditionExpr(Lexer &lex, DbInfo &info);
 
-inline std::shared_ptr<ExprAST> ParseSQL(Lexer &lex, bool isNest = false) {
+inline std::shared_ptr<ExprAST> ParseSQL
+	(Lexer &lex, DbInfo &info, bool isNest = false) {
 	std::vector<std::shared_ptr<ExprAST>> v;
 	while (true)
 		switch (lex.GetTok()) {
 		case Lexer::Token::TokDb:
-			v.push_back(ParseDatabaseExpr(lex)); break;
+			v.push_back(ParseDatabaseExpr(lex, info)); break;
 		case Lexer::Token::TokCond:
-			v.push_back(ParseConditionExpr(lex)); break;
+			v.push_back(ParseConditionExpr(lex, info)); break;
 		case Lexer::Token::TokArgs:
-			v.push_back(ParseColumnExpr(lex)); break;
+			v.push_back(ParseColumnExpr(lex, info)); break;
 		default:
 			lex.GetNextTok(); 
 			if (!isNest) return make_shared<GroupExprAST>(v);
@@ -92,42 +107,62 @@ inline std::shared_ptr<ExprAST> ParseSQL(Lexer &lex, bool isNest = false) {
 		}
 }
 
-inline std::shared_ptr<ExprAST> ParseSingleCondExpr(Lexer &lex) {
+inline std::shared_ptr<ExprAST> ParseSingleCondExpr(Lexer &lex, DbInfo &info) {
 	std::shared_ptr<ExprAST> ptr;
 	switch (lex.GetNextTok()) {
 	case Lexer::Token::TokNumber:
 	case Lexer::Token::TokIdentifier:
 	case Lexer::Token::TokName:
-		ptr = ParseSimpleCondExpr(lex); break;
+		ptr = ParseSimpleCondExpr(lex, info); break;
 	case Lexer::Token::TokEOF:
 		ptr = nullptr; break;
 	default:
-		ptr = ParseSQL(lex, 1); break;
+		ptr = ParseSQL(lex, info, 1); break;
 	}
 	return std::move(ptr);
 }
 
 inline std::shared_ptr<ExprAST> ParseBinOpRHS
-	(Lexer &lex, int ExprPrec, std::shared_ptr<ExprAST> LHS) {
+	(Lexer &lex, int ExprPrec, std::shared_ptr<ExprAST> LHS, DbInfo &info) {
 	std::string op; std::shared_ptr<ExprAST> RHS;
 	while (true) {
 		auto tokPrec = lex.GetTokPrecedence();
 		op = lex.GetNameStr();
 		if (tokPrec < ExprPrec) return LHS; // parse stop.
 		if (lex.GetNextTok() == Lexer::Token::TokEOF) return nullptr; //syntax error.
-		RHS = ParseSingleCondExpr(lex);
+		RHS = ParseSingleCondExpr(lex, info);
 		auto nextPrec = lex.GetTokPrecedence();
 		if (nextPrec > tokPrec)
-			RHS = ParseBinOpRHS(lex, ExprPrec + 1, RHS);
+			RHS = ParseBinOpRHS(lex, ExprPrec + 1, RHS, info);
 		LHS = make_shared<BinaryExprAST>(op, LHS, RHS);
 	}
 }
 
-inline std::shared_ptr<ExprAST> ParseConditionExpr(Lexer &lex) {
-	return make_shared<ConditionAST>(ParseBinOpRHS(lex, 0, ParseSingleCondExpr(lex)));
+inline std::shared_ptr<ExprAST> ParseConditionExpr(Lexer &lex, DbInfo &info) {
+	return make_shared<ConditionAST>(
+		ParseBinOpRHS(lex, 0, ParseSingleCondExpr(lex, info), info));
 }
 
-int main() {
+int main(int argc, const char *argv[]) {
+	const string url{argc >= 2 ? argv[1]: DBHOST};
+	const string user{argc >= 3 ? argv[2]: USER};
+	const string password{argc >= 4 ? argv[3]: PASSWORD};
+	const string database{argc >= 5 ? argv[4]: DATABASE};
+
+    Connection conn(false);
+    conn.connect(database.c_str(), url.c_str(), user.c_str(), password.c_str());
+    std::map<std::string, std::string> getDBname;
+    std::map<std::string, std::set<std::string>> dbcolumn;
+    auto tables = QueryTable(conn, database);
+    for (auto &tablename: tables) {
+    	auto columns = QueryColumn(conn, tablename);
+    	for (auto &colname: columns) getDBname[colname] = tablename;
+    	dbcolumn[tablename] = std::move(columns);
+    }
+    DbInfo info;
+    info.getDBname = std::move(getDBname);
+    info.dbcolumn = std::move(dbcolumn);
+
 	Lexer lex{MYQUERY};
 	cout << "Origin:" << endl << MYQUERY << endl;
 
@@ -139,7 +174,7 @@ int main() {
 		else cout << lex.GetNameStr() << endl;
 	*/
 	 
-	auto ptr = ParseSQL(lex);
+	auto ptr = ParseSQL(lex, info);
 	cout << "\nParse:\n" << *ptr << endl;
 	return 0;
 }

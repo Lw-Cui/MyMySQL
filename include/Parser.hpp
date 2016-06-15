@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <Query.hpp>
 
 class Lexer {
 public:
