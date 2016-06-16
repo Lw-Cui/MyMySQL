@@ -4,8 +4,11 @@
 #include <memory>
 #include <iostream>
 #include <sstream>
+
 #include <Parser.hpp>
 #include <mysql++.h>
+#include "boost/format.hpp"
+
 using namespace std;
 using namespace mysqlpp;
 
@@ -51,12 +54,30 @@ inline std::shared_ptr<ExprAST> ParseIdentifierExpr(Lexer &lex) {
 	return std::move(v);
 }
 
-inline std::shared_ptr<ExprAST> ParseDatabaseExpr(Lexer &lex, DbInfo &info) {
-	std::vector<std::shared_ptr<ExprAST>> v;
-	while (lex.GetTok() == Lexer::Token::TokDb) {
-		lex.GetNextTok(); v.push_back(ParseNameExpr(lex, info));
+std::string BuildDBconn(const std::vector<std::string> &db, 
+	const std::map<std::string, std::set<std::string>> &dbcolumn) {
+	std::string connect;
+	for (size_t i = 0; i + 1 < db.size(); i++) {
+		vector<std::string> commonPart;
+		std::set_intersection (
+			std::begin(dbcolumn.at(db[i])), std::end(dbcolumn.at(db[i])),
+			std::begin(dbcolumn.at(db[i + 1])), std::end(dbcolumn.at(db[i + 1])),
+			std::back_inserter(commonPart));
+		if (i != 0) connect += ",";
+		for (auto &s: commonPart)
+			connect += str(boost::format(" %s.%s = %s.%s") % db[i] % s % db[i + 1] % s);
 	}
-	return std::make_shared<DataBaseAST>(v);
+	return std::move(connect);
+}
+
+inline std::shared_ptr<ExprAST> ParseDatabaseExpr(Lexer &lex, DbInfo &info) {
+	std::vector<std::shared_ptr<ExprAST>> db;
+	std::vector<std::string> v;
+	while (lex.GetTok() == Lexer::Token::TokDb) {
+		lex.GetNextTok(); v.push_back(lex.GetNameStr());
+		db.push_back(ParseNameExpr(lex, info));
+	}
+	return std::make_shared<DataBaseAST>(db, BuildDBconn(v, info.dbcolumn));
 }
 
 inline std::shared_ptr<ExprAST> ParseColumnExpr(Lexer &lex, DbInfo &info) {

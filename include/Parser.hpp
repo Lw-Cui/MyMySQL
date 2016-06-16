@@ -39,6 +39,11 @@ public:
 			expression >> numVal; currentTok = TokNumber;
 		} else if (isspace(beg)) {
 			return GetNextTok();
+		} else if (beg == '\'') {
+			nameStr = "\'";
+			while ((beg = expression.get()) && beg != '\'')
+				nameStr.push_back(beg);
+			nameStr.push_back(beg); currentTok = TokName;
 		} else {
 			switch (beg) {
 			case '(':currentTok = TokArgs; break;
@@ -128,13 +133,16 @@ public:
 
 class DataBaseAST: public GroupExprAST {
 public:
-	DataBaseAST(std::vector<std::shared_ptr<ExprAST>> v):GroupExprAST{std::move(v)}{}
+	DataBaseAST(std::vector<std::shared_ptr<ExprAST>> v, std::string on)
+		:GroupExprAST{std::move(v)}, Connect{std::move(on)}{}
 	virtual void print(std::ostream &out) override {
 		out << " FROM ";
 		for (size_t i = 0; i < ptr.size(); i++)
-			if (i) out << ", " << *ptr[i]; else out << *ptr[i];
-		out << "\n";
+			if (i) out << " INNER JOIN " << *ptr[i]; else out << *ptr[i];
+		if (!Connect.empty()) out << " ON" << Connect << "\n";
 	}
+private:
+	std::string Connect;
 };
 
 class ColumnAST: public GroupExprAST {
@@ -152,7 +160,7 @@ class SimpleConditionAST: public GroupExprAST {
 public:
 	SimpleConditionAST(std::vector<std::shared_ptr<ExprAST>> v):GroupExprAST{std::move(v)}{}
 	virtual void print(std::ostream &out) override {
-		for(auto &p: ptr) out << " " << *p << "";
+		for(auto &p: ptr) out << "" << *p << " ";
 	}
 };
 
