@@ -165,10 +165,15 @@ namespace {
 }
 
 int main(int argc, const char *argv[]) {
-	const string url{argc >= 2 ? argv[1]: DBHOST};
-	const string user{argc >= 3 ? argv[2]: USER};
-	const string password{argc >= 4 ? argv[3]: PASSWORD};
-	const string database{argc >= 5 ? argv[4]: DATABASE};
+	std::string url{DBHOST};
+	std::string user{USER};
+	std::string password{PASSWORD};
+	std::string database{DATABASE};
+
+	if (argc > 2 && std::string{argv[1]} == "-u") user = argv[2];
+	if (argc > 3 && std::string{argv[3]} == "-p") {
+		cout << "Enter password: "; cin >> password;
+	}
 
     Connection conn(false);
     conn.connect(database.c_str(), url.c_str(), user.c_str(), password.c_str());
